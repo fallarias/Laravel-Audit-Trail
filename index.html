@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laravel Audit Trail Package — Live Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#09090f;
+  --surface:#111118;
+  --surface2:#1a1a26;
+  --border:#2a2a3a;
+  --accent:#ff8c00;
+  --accent2:#ffb347;
+  --text:#e8e8f0;
+  --muted:#6b6b8a;
+  --green:#22c55e;
+  --blue:#60a5fa;
+  --purple:#a78bfa;
+  --red:#f87171;
+  --yellow:#fbbf24;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;overflow-x:hidden}
+
+/* NOISE TEXTURE */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:0;opacity:.5
+}
+
+/* NAV */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 40px;height:64px;
+  background:rgba(9,9,15,.85);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border)
+}
+.nav-logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.1rem}
+.nav-logo span{color:var(--accent)}
+.nav-badge{
+  background:var(--accent);color:#000;
+  font-size:.7rem;font-weight:700;
+  padding:3px 10px;border-radius:20px;letter-spacing:.05em
+}
+.nav-links{display:flex;gap:32px}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:.9rem;transition:color .2s}
+.nav-links a:hover{color:var(--text)}
+.nav-buy{
+  background:var(--accent);color:#000;
+  padding:8px 20px;border-radius:6px;
+  text-decoration:none;font-weight:700;font-size:.85rem;
+  transition:opacity .2s
+}
+.nav-buy:hover{opacity:.85}
+
+/* HERO */
+.hero{
+  min-height:100vh;display:flex;align-items:center;
+  padding:120px 80px 80px;position:relative;overflow:hidden
+}
+.hero-glow{
+  position:absolute;top:-200px;right:-200px;
+  width:700px;height:700px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,140,0,.12) 0%,transparent 70%);
+  pointer-events:none
+}
+.hero-glow2{
+  position:absolute;bottom:-300px;left:-100px;
+  width:500px;height:500px;border-radius:50%;
+  background:radial-gradient(circle,rgba(167,139,250,.08) 0%,transparent 70%);
+  pointer-events:none
+}
+.hero-content{max-width:580px;position:relative;z-index:1}
+.hero-label{
+  display:inline-flex;align-items:center;gap:8px;
+  border:1px solid var(--accent);color:var(--accent);
+  padding:6px 16px;border-radius:20px;font-size:.8rem;font-weight:700;
+  letter-spacing:.08em;margin-bottom:32px
+}
+.hero-label::before{content:'●';font-size:.5rem;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+h1{font-size:clamp(2.5rem,5vw,4.2rem);line-height:1.05;font-weight:800;margin-bottom:24px}
+h1 em{font-style:normal;color:var(--accent)}
+.hero-sub{font-size:1.1rem;color:var(--muted);line-height:1.7;margin-bottom:40px;max-width:480px}
+.hero-actions{display:flex;gap:16px;flex-wrap:wrap}
+.btn-primary{
+  background:var(--accent);color:#000;
+  padding:14px 28px;border-radius:8px;
+  text-decoration:none;font-weight:700;font-size:.95rem;
+  transition:transform .2s,box-shadow .2s;
+  box-shadow:0 0 30px rgba(255,140,0,.3)
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 40px rgba(255,140,0,.4)}
+.btn-secondary{
+  border:1px solid var(--border);color:var(--text);
+  padding:14px 28px;border-radius:8px;
+  text-decoration:none;font-weight:600;font-size:.95rem;
+  transition:border-color .2s,background .2s
+}
+.btn-secondary:hover{border-color:var(--accent);background:rgba(255,140,0,.05)}
+.hero-stats{display:flex;gap:40px;margin-top:56px;padding-top:40px;border-top:1px solid var(--border)}
+.stat-num{font-size:2rem;font-weight:800;color:var(--accent)}
+.stat-label{font-size:.8rem;color:var(--muted);margin-top:4px}
+
+/* DEMO TERMINAL */
+.hero-terminal{
+  position:absolute;right:80px;top:50%;transform:translateY(-50%);
+  width:520px;z-index:1
+}
+@media(max-width:1100px){.hero-terminal{display:none}}
+.terminal{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;
+  box-shadow:0 40px 80px rgba(0,0,0,.6)
+}
+.terminal-bar{
+  background:var(--surface2);padding:12px 16px;
+  display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)
+}
+.dot{width:12px;height:12px;border-radius:50%}
+.dot-r{background:#ff5f57}.dot-y{background:#febc2e}.dot-g{background:#28c840}
+.terminal-file{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--muted)}
+.terminal-body{padding:24px;font-family:'JetBrains Mono',monospace;font-size:.82rem;line-height:1.9}
+.c-comment{color:#5a7a5a}.c-keyword{color:#60a5fa}.c-class{color:#4ec9b0}
+.c-string{color:#ce9178}.c-fn{color:#dcdcaa}.c-var{color:#9cdcfe}
+.c-op{color:#e8e8f0}.c-num{color:#b5cea8}
+
+/* LIVE LOG DEMO */
+.log-demo{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;margin-top:16px
+}
+.log-bar{
+  background:var(--surface2);padding:10px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border)
+}
+.log-bar-title{font-size:.78rem;font-family:'JetBrains Mono',monospace;color:var(--muted)}
+.live-dot{
+  display:flex;align-items:center;gap:6px;
+  font-size:.72rem;color:var(--green)
+}
+.live-dot::before{
+  content:'';width:7px;height:7px;border-radius:50%;
+  background:var(--green);animation:pulse 1.5s infinite
+}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.4)}50%{box-shadow:0 0 0 5px rgba(34,197,94,0)}}
+.log-entries{padding:16px;display:flex;flex-direction:column;gap:8px}
+.log-entry{
+  display:flex;align-items:center;gap:12px;
+  padding:8px 12px;border-radius:6px;background:var(--surface2);
+  font-family:'JetBrains Mono',monospace;font-size:.75rem;
+  animation:slideIn .4s ease
+}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.log-action{
+  padding:2px 8px;border-radius:4px;font-weight:700;font-size:.68rem;
+  white-space:nowrap
+}
+.action-upload{background:rgba(96,165,250,.15);color:#60a5fa}
+.action-login{background:rgba(34,197,94,.15);color:#22c55e}
+.action-delete{background:rgba(248,113,113,.15);color:#f87171}
+.action-update{background:rgba(251,191,36,.15);color:#fbbf24}
+.action-view{background:rgba(167,139,250,.15);color:#a78bfa}
+.log-msg{color:var(--muted);flex:1}
+.log-time{color:var(--muted);opacity:.6;white-space:nowrap}
+
+/* SECTIONS */
+section{padding:100px 80px;position:relative;z-index:1}
+.section-label{
+  font-size:.75rem;font-weight:700;letter-spacing:.15em;
+  color:var(--accent);text-transform:uppercase;margin-bottom:16px
+}
+h2{font-size:clamp(1.8rem,3vw,2.8rem);font-weight:800;margin-bottom:16px}
+h2 em{font-style:normal;color:var(--accent)}
+.section-sub{font-size:1rem;color:var(--muted);max-width:560px;line-height:1.7;margin-bottom:60px}
+
+/* FEATURES GRID */
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}
+.feature-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:28px;
+  transition:border-color .3s,transform .3s
+}
+.feature-card:hover{border-color:var(--accent);transform:translateY(-4px)}
+.feature-icon{
+  width:44px;height:44px;border-radius:10px;
+  background:rgba(255,140,0,.1);border:1px solid rgba(255,140,0,.2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.2rem;margin-bottom:20px
+}
+.feature-card h3{font-size:1.05rem;font-weight:700;margin-bottom:10px}
+.feature-card p{font-size:.88rem;color:var(--muted);line-height:1.65}
+
+/* INTERACTIVE DEMO */
+.demo-wrapper{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;overflow:hidden
+}
+.demo-tabs{
+  display:flex;border-bottom:1px solid var(--border);
+  background:var(--surface2)
+}
+.demo-tab{
+  padding:14px 24px;font-size:.85rem;font-weight:600;
+  cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;
+  transition:all .2s;font-family:'Syne',sans-serif
+}
+.demo-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.demo-panel{display:none;padding:32px}
+.demo-panel.active{display:block}
+.code-block{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:24px;
+  font-family:'JetBrains Mono',monospace;font-size:.82rem;line-height:1.9;
+  overflow-x:auto
+}
+.demo-output{
+  margin-top:20px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:20px
+}
+.demo-output h4{font-size:.8rem;color:var(--muted);margin-bottom:12px;font-weight:600;letter-spacing:.05em}
+.output-row{
+  display:flex;align-items:center;gap:12px;padding:8px 0;
+  border-bottom:1px solid var(--border);font-size:.85rem
+}
+.output-row:last-child{border-bottom:none}
+
+/* FILE TREE */
+.file-tree{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:20px;
+  font-family:'JetBrains Mono',monospace;font-size:.82rem;line-height:1.9
+}
+.ft-dir{color:var(--accent)}
+.ft-file{color:var(--text)}
+.ft-comment{color:var(--muted);font-size:.75rem}
+
+/* API EXPLORER */
+.api-list{display:flex;flex-direction:column;gap:12px}
+.api-item{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:16px 20px;
+  display:flex;align-items:center;gap:16px
+}
+.api-method{
+  padding:4px 10px;border-radius:4px;font-family:'JetBrains Mono',monospace;
+  font-size:.75rem;font-weight:700;min-width:52px;text-align:center
+}
+.get{background:rgba(34,197,94,.15);color:#22c55e}
+.post{background:rgba(96,165,250,.15);color:#60a5fa}
+.api-path{font-family:'JetBrains Mono',monospace;font-size:.85rem;flex:1}
+.api-desc{font-size:.8rem;color:var(--muted)}
+
+/* REQUIREMENTS */
+.req-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.req-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:20px;text-align:center
+}
+.req-card .req-icon{font-size:1.8rem;margin-bottom:10px}
+.req-card h4{font-size:.9rem;font-weight:700;margin-bottom:4px}
+.req-card p{font-size:.8rem;color:var(--muted)}
+
+/* CTA */
+.cta-section{
+  background:linear-gradient(135deg,rgba(255,140,0,.08) 0%,rgba(167,139,250,.06) 100%);
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  text-align:center;padding:100px 40px
+}
+.cta-section h2{font-size:clamp(2rem,4vw,3.2rem);margin-bottom:16px}
+.cta-section p{color:var(--muted);font-size:1rem;margin-bottom:40px}
+.price-tag{
+  display:inline-flex;align-items:baseline;gap:4px;
+  font-size:3.5rem;font-weight:800;color:var(--accent);margin-bottom:32px
+}
+.price-tag sup{font-size:1.5rem}
+.price-tag sub{font-size:1rem;color:var(--muted)}
+
+/* FOOTER */
+footer{padding:40px 80px;border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:.8rem;color:var(--muted)
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <span>▣</span> AuditTrail <span class="nav-badge">LARAVEL</span>
+  </div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#demo">Demo</a>
+    <a href="#files">Files</a>
+    <a href="#api">API</a>
+  </div>
+  <a href="https://www.codester.com" class="nav-buy" target="_blank">Buy on Codester — $14</a>
+</nav>
+
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-glow2"></div>
+
+  <div class="hero-content">
+    <div class="hero-label">LIVE DEMO — Laravel Package</div>
+    <h1>Track every<br>user action with<br><em>one line of code</em></h1>
+    <p class="hero-sub">A drop-in Laravel activity logger. Add audit trails to any existing app in minutes — no config, no boilerplate, no headaches.</p>
+    <div class="hero-actions">
+      <a href="#demo" class="btn-primary">See it in action →</a>
+      <a href="#files" class="btn-secondary">View file structure</a>
+    </div>
+    <div class="hero-stats">
+      <div><div class="stat-num">1</div><div class="stat-label">Line to log anything</div></div>
+      <div><div class="stat-num">9</div><div class="stat-label">Features included</div></div>
+      <div><div class="stat-num">∞</div><div class="stat-label">Rows — indexed for scale</div></div>
+    </div>
+  </div>
+
+  <div class="hero-terminal">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+        <div class="terminal-file">ActivityLogger.php</div>
+      </div>
+      <div class="terminal-body">
+        <div><span class="c-comment">// Log any action — one line</span></div>
+        <div><span class="c-keyword">use </span><span class="c-class">App\Helpers\ActivityLogger</span><span class="c-op">;</span></div>
+        <div>&nbsp;</div>
+        <div><span class="c-class">ActivityLogger</span><span class="c-op">::</span><span class="c-fn">log</span><span class="c-op">(</span></div>
+        <div>&nbsp;&nbsp;<span class="c-string">'FILE_UPLOAD'</span><span class="c-op">,</span></div>
+        <div>&nbsp;&nbsp;<span class="c-string">'Uploaded: invoice_2024.pdf'</span></div>
+        <div><span class="c-op">);</span></div>
+        <div>&nbsp;</div>
+        <div><span class="c-comment">// Auto-log via middleware</span></div>
+        <div><span class="c-class">Route</span><span class="c-op">::</span><span class="c-fn">middleware</span><span class="c-op">([</span></div>
+        <div>&nbsp;&nbsp;<span class="c-string">'auth'</span><span class="c-op">,</span> <span class="c-string">'log.activity'</span></div>
+        <div><span class="c-op">])-></span><span class="c-fn">group</span><span class="c-op">(...);</span></div>
+      </div>
+    </div>
+
+    <div class="log-demo" style="margin-top:16px">
+      <div class="log-bar">
+        <span class="log-bar-title">activity_logs — live feed</span>
+        <span class="live-dot">LIVE</span>
+      </div>
+      <div class="log-entries" id="logFeed">
+        <div class="log-entry">
+          <span class="log-action action-login">LOGIN</span>
+          <span class="log-msg">User authenticated successfully</span>
+          <span class="log-time">just now</span>
+        </div>
+        <div class="log-entry">
+          <span class="log-action action-upload">UPLOAD</span>
+          <span class="log-msg">Uploaded: invoice_2024.pdf</span>
+          <span class="log-time">2s ago</span>
+        </div>
+        <div class="log-entry">
+          <span class="log-action action-update">UPDATE</span>
+          <span class="log-msg">Request #42 → Completed</span>
+          <span class="log-time">15s ago</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="section-label">What you get</div>
+  <h2>Everything you need for <em>full audit coverage</em></h2>
+  <p class="section-sub">Production-tested in a live government voucher management system. Handles millions of rows without breaking a sweat.</p>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <h3>One-Line Logging</h3>
+      <p><code>ActivityLogger::log('ACTION', 'message')</code> — works anywhere in your app. No setup, no service binding needed.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔄</div>
+      <h3>Auto-Log Middleware</h3>
+      <p>Attach <code>log.activity</code> to any route group and every authenticated request is logged automatically.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔍</div>
+      <h3>Filter REST API</h3>
+      <p>Query by action type, user ID, and date range out of the box. Includes an <code>actionTypes()</code> endpoint for dropdown population.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🗄️</div>
+      <h3>Indexed for Scale</h3>
+      <p>Migration includes indexes on <code>action</code>, <code>user_id</code>, and <code>action_date</code>. Fast at millions of rows.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔗</div>
+      <h3>User Relationship</h3>
+      <p>Every log entry links to the user who triggered it. Load with <code>->with('user')</code> for names in your UI.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🗑️</div>
+      <h3>Soft Deletes</h3>
+      <p>Logs are never permanently lost. Deleted entries stay in the database and can be restored for compliance audits.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📋</div>
+      <h3>AuditTrails Model</h3>
+      <p>A second model for tracking per-step process trails. Ideal for multi-step workflows with ordered states.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎯</div>
+      <h3>Specific User Logging</h3>
+      <p>Log as any user — not just the authenticated one. Perfect for admin actions done on behalf of clients.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📦</div>
+      <h3>Drop-in Ready</h3>
+      <p>Copy <code>src/</code> into your app, run <code>php artisan migrate</code>, and you're logging. No composer package, no config file.</p>
+    </div>
+  </div>
+</section>
+
+<!-- INTERACTIVE DEMO -->
+<section id="demo" style="padding-top:0">
+  <div class="section-label">Interactive demo</div>
+  <h2>See <em>exactly</em> how it works</h2>
+  <p class="section-sub">Click through the tabs to explore usage, query patterns, and the filter API.</p>
+
+  <div class="demo-wrapper">
+    <div class="demo-tabs">
+      <div class="demo-tab active" onclick="showTab('basic')">Basic Usage</div>
+      <div class="demo-tab" onclick="showTab('middleware')">Middleware</div>
+      <div class="demo-tab" onclick="showTab('query')">Querying Logs</div>
+      <div class="demo-tab" onclick="showTab('filter')">Filter API</div>
+    </div>
+
+    <div class="demo-panel active" id="tab-basic">
+      <div class="code-block">
+<span class="c-keyword">use </span><span class="c-class">App\Helpers\ActivityLogger</span><span class="c-op">;</span>
+
+<span class="c-comment">// Log with the authenticated user (automatic)</span>
+<span class="c-class">ActivityLogger</span><span class="c-op">::</span><span class="c-fn">log</span><span class="c-op">(</span><span class="c-string">'FILE_UPLOAD'</span><span class="c-op">,</span> <span class="c-string">'Uploaded: invoice_2024.pdf'</span><span class="c-op">);</span>
+<span class="c-class">ActivityLogger</span><span class="c-op">::</span><span class="c-fn">log</span><span class="c-op">(</span><span class="c-string">'USER_LOGIN'</span><span class="c-op">,</span> <span class="c-string">'User logged in from 192.168.1.1'</span><span class="c-op">);</span>
+<span class="c-class">ActivityLogger</span><span class="c-op">::</span><span class="c-fn">log</span><span class="c-op">(</span><span class="c-string">'STATUS_CHANGED'</span><span class="c-op">,</span> <span class="c-string">'Request #42 → Completed'</span><span class="c-op">);</span>
+
+<span class="c-comment">// Log as a specific user</span>
+<span class="c-class">ActivityLogger</span><span class="c-op">::</span><span class="c-fn">log</span><span class="c-op">(</span>
+  <span class="c-string">'ACCOUNT_CREATED'</span><span class="c-op">,</span>
+  <span class="c-string">'New client registered.'</span><span class="c-op">,</span>
+  <span class="c-var">userId</span><span class="c-op">:</span> <span class="c-var">$user</span><span class="c-op">-></span><span class="c-var">id</span>
+<span class="c-op">);</span>
+      </div>
+      <div class="demo-output">
+        <h4>RESULTING LOG ENTRIES</h4>
+        <div class="output-row">
+          <span class="log-action action-upload">FILE_UPLOAD</span>
+          <span style="flex:1;font-family:'JetBrains Mono',monospace;font-size:.8rem">Uploaded: invoice_2024.pdf</span>
+          <span style="color:var(--muted);font-size:.78rem">user_id: 5 · 2024-03-15 09:12:33</span>
+        </div>
+        <div class="output-row">
+          <span class="log-action action-login">USER_LOGIN</span>
+          <span style="flex:1;font-family:'JetBrains Mono',monospace;font-size:.8rem">User logged in from 192.168.1.1</span>
+          <span style="color:var(--muted);font-size:.78rem">user_id: 5 · 2024-03-15 09:10:01</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-panel" id="tab-middleware">
+      <div class="code-block">
+<span class="c-comment">// Register in bootstrap/app.php (Laravel 11)</span>
+<span class="c-var">$middleware</span><span class="c-op">-></span><span class="c-fn">alias</span><span class="c-op">([</span>
+  <span class="c-string">'log.activity'</span> <span class="c-op">=></span> <span class="c-class">\App\Http\Middleware\LogActivity</span><span class="c-op">::class</span><span class="c-op">,</span>
+<span class="c-op">]);</span>
+
+<span class="c-comment">// Apply to any route group</span>
+<span class="c-class">Route</span><span class="c-op">::</span><span class="c-fn">middleware</span><span class="c-op">([</span><span class="c-string">'auth'</span><span class="c-op">,</span> <span class="c-string">'log.activity:PAGE_VIEW'</span><span class="c-op">])</span>
+  <span class="c-op">-></span><span class="c-fn">group</span><span class="c-op">(</span><span class="c-keyword">function</span> <span class="c-op">() {</span>
+    <span class="c-class">Route</span><span class="c-op">::</span><span class="c-fn">get</span><span class="c-op">(</span><span class="c-string">'/dashboard'</span><span class="c-op">,</span> <span class="c-class">DashboardController</span><span class="c-op">::class);</span>
+    <span class="c-class">Route</span><span class="c-op">::</span><span class="c-fn">get</span><span class="c-op">(</span><span class="c-string">'/reports'</span><span class="c-op">,</span> <span class="c-class">ReportController</span><span class="c-op">::class);</span>
+  <span class="c-op">});</span>
+      </div>
+    </div>
+
+    <div class="demo-panel" id="tab-query">
+      <div class="code-block">
+<span class="c-keyword">use </span><span class="c-class">App\Models\ActivityLog</span><span class="c-op">;</span>
+
+<span class="c-comment">// Latest 50 logs with user info</span>
+<span class="c-class">ActivityLog</span><span class="c-op">::</span><span class="c-fn">with</span><span class="c-op">(</span><span class="c-string">'user'</span><span class="c-op">)-></span><span class="c-fn">latest</span><span class="c-op">(</span><span class="c-string">'action_date'</span><span class="c-op">)-></span><span class="c-fn">paginate</span><span class="c-op">(</span><span class="c-num">50</span><span class="c-op">);</span>
+
+<span class="c-comment">// Filter by action type</span>
+<span class="c-class">ActivityLog</span><span class="c-op">::</span><span class="c-fn">where</span><span class="c-op">(</span><span class="c-string">'action'</span><span class="c-op">,</span> <span class="c-string">'FILE_UPLOAD'</span><span class="c-op">)-></span><span class="c-fn">get</span><span class="c-op">();</span>
+
+<span class="c-comment">// Filter by user</span>
+<span class="c-class">ActivityLog</span><span class="c-op">::</span><span class="c-fn">where</span><span class="c-op">(</span><span class="c-string">'user_id'</span><span class="c-op">,</span> <span class="c-var">$userId</span><span class="c-op">)-></span><span class="c-fn">get</span><span class="c-op">();</span>
+
+<span class="c-comment">// Date range</span>
+<span class="c-class">ActivityLog</span><span class="c-op">::</span><span class="c-fn">whereDate</span><span class="c-op">(</span><span class="c-string">'action_date'</span><span class="c-op">,</span> <span class="c-string">'>='</span><span class="c-op">,</span> <span class="c-string">'2024-01-01'</span><span class="c-op">)-></span><span class="c-fn">get</span><span class="c-op">();</span>
+      </div>
+    </div>
+
+    <div class="demo-panel" id="tab-filter">
+      <div class="api-list">
+        <div class="api-item">
+          <span class="api-method get">GET</span>
+          <span class="api-path">/audit-logs?action=FILE_UPLOAD&user_id=5&date_from=2024-01-01</span>
+          <span class="api-desc">Paginated filtered logs</span>
+        </div>
+        <div class="api-item">
+          <span class="api-method get">GET</span>
+          <span class="api-path">/audit-logs/actions</span>
+          <span class="api-desc">All distinct action types</span>
+        </div>
+        <div class="api-item">
+          <span class="api-method get">GET</span>
+          <span class="api-path">/audit-logs/{id}</span>
+          <span class="api-desc">Single log entry with user</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FILE STRUCTURE -->
+<section id="files" style="padding-top:0">
+  <div class="section-label">File structure</div>
+  <h2>Clean, <em>organized</em> source code</h2>
+  <p class="section-sub">Copy <code>src/</code> into your Laravel <code>app/</code> directory. That's it.</p>
+  <div class="file-tree">
+    <div><span class="ft-dir">src/</span></div>
+    <div>&nbsp;&nbsp;<span class="ft-dir">Helpers/</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-file">ActivityLogger.php</span> &nbsp;<span class="ft-comment">← Static log() helper — use anywhere</span></div>
+    <div>&nbsp;&nbsp;<span class="ft-dir">Models/</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-file">ActivityLog.php</span> &nbsp;<span class="ft-comment">← Eloquent model + user relationship + soft deletes</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-file">AuditTrails.php</span> &nbsp;<span class="ft-comment">← Per-step process trail model</span></div>
+    <div>&nbsp;&nbsp;<span class="ft-dir">Http/</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-dir">Controllers/</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-file">AuditLogController.php</span> &nbsp;<span class="ft-comment">← index, show, actionTypes</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-dir">Middleware/</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-file">LogActivity.php</span> &nbsp;<span class="ft-comment">← Auto-log middleware</span></div>
+    <div>&nbsp;&nbsp;<span class="ft-dir">database/migrations/</span></div>
+    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="ft-file">create_activity_logs_table.php</span> &nbsp;<span class="ft-comment">← Indexed for performance</span></div>
+    <div><span class="ft-file">README.md</span> &nbsp;<span class="ft-comment">← Full installation guide</span></div>
+  </div>
+</section>
+
+<!-- REQUIREMENTS -->
+<section style="padding-top:0">
+  <div class="section-label">Requirements</div>
+  <h2>Minimal <em>dependencies</em></h2>
+  <div class="req-grid">
+    <div class="req-card"><div class="req-icon">🐘</div><h4>PHP 8.1+</h4><p>Works with 8.1, 8.2, 8.3, 8.4</p></div>
+    <div class="req-card"><div class="req-icon">🔴</div><h4>Laravel 10+</h4><p>Compatible with Laravel 10 & 11</p></div>
+    <div class="req-card"><div class="req-icon">🗄️</div><h4>MySQL 5.x+</h4><p>Any MySQL-compatible database</p></div>
+    <div class="req-card"><div class="req-icon">📦</div><h4>No extra packages</h4><p>Pure Laravel — nothing extra to install</p></div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="section-label">Get it now</div>
+  <h2>Add audit trails to your Laravel app <em>today</em></h2>
+  <p>One-time purchase. Yours forever. Use in unlimited projects with Extended License.</p>
+  <div class="price-tag"><sup>$</sup>14<sub>/one-time</sub></div>
+  <br>
+  <a href="https://www.codester.com" class="btn-primary" target="_blank" style="font-size:1rem;padding:16px 36px">
+    Buy on Codester →
+  </a>
+</section>
+
+<footer>
+  <span>Laravel Audit Trail Package — Activity Logger</span>
+  <span>PHP 8.1+ · Laravel 10+ · Extended License available</span>
+</footer>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.demo-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.demo-panel').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+// Simulate live log feed
+const logs = [
+  { action: 'FILE_UPLOAD', cls: 'action-upload', msg: 'Uploaded: report_june.pdf' },
+  { action: 'USER_LOGIN',  cls: 'action-login',  msg: 'Admin logged in' },
+  { action: 'STATUS_CHANGED', cls: 'action-update', msg: 'Request #88 → Approved' },
+  { action: 'DELETE',      cls: 'action-delete', msg: 'Record #12 soft-deleted' },
+  { action: 'PAGE_VIEW',   cls: 'action-view',   msg: 'GET /admin/dashboard' },
+  { action: 'SETTINGS',    cls: 'action-update', msg: 'max_upload changed to 10MB' },
+];
+let li = 0;
+setInterval(() => {
+  const feed = document.getElementById('logFeed');
+  if (!feed) return;
+  const l = logs[li % logs.length]; li++;
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `<span class="log-action ${l.cls}">${l.action}</span><span class="log-msg">${l.msg}</span><span class="log-time">just now</span>`;
+  feed.insertBefore(entry, feed.firstChild);
+  if (feed.children.length > 5) feed.removeChild(feed.lastChild);
+  // update times
+  [...feed.children].forEach((el, i) => {
+    const t = el.querySelector('.log-time');
+    if (t) t.textContent = i === 0 ? 'just now' : i * 3 + 's ago';
+  });
+}, 3000);
+</script>
+</body>
+</html>
